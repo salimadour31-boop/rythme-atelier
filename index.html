@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Rythme Atelier — boîte à rythmes / drum machine</title>
+  <meta name="description" content="Boîte à rythmes et séquenceur pas à pas gratuit dans le navigateur : 10 sons synthétisés, swing, motifs A–D, export WAV / MIDI / JSON. FR / EN / Taqbaylit.">
+  <meta name="theme-color" content="#111317">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111317'/%3E%3Crect x='5' y='6' width='6' height='6' rx='1.5' fill='%23ff8a3d'/%3E%3Crect x='13' y='6' width='6' height='6' rx='1.5' fill='%2337414f'/%3E%3Crect x='21' y='6' width='6' height='6' rx='1.5' fill='%23ffd166'/%3E%3Crect x='5' y='14' width='6' height='6' rx='1.5' fill='%2337414f'/%3E%3Crect x='13' y='14' width='6' height='6' rx='1.5' fill='%2342d6c4'/%3E%3Crect x='21' y='14' width='6' height='6' rx='1.5' fill='%2337414f'/%3E%3Crect x='5' y='22' width='6' height='6' rx='1.5' fill='%2342d6c4'/%3E%3Crect x='13' y='22' width='6' height='6' rx='1.5' fill='%2337414f'/%3E%3Crect x='21' y='22' width='6' height='6' rx='1.5' fill='%23b38cff'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <a class="skip" href="#grid" data-i18n="gridLabel">Grille des pas</a>
+
+  <header class="top">
+    <div class="brand">
+      <div class="logo" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+      <div>
+        <h1 data-i18n="appTitle">Rythme Atelier</h1>
+        <p class="tagline" data-i18n="tagline"></p>
+      </div>
+    </div>
+    <div class="top-actions">
+      <label class="lang"><span data-i18n="language">Langue</span>
+        <select id="lang"></select>
+      </label>
+      <button id="helpBtn" class="btn ghost" type="button" aria-haspopup="dialog"><span aria-hidden="true">?</span> <span data-i18n="help">Aide</span></button>
+    </div>
+  </header>
+
+  <main>
+    <!-- Transport: play/stop, tempo, swing, master, length, chain, meter -->
+    <section class="panel transport" aria-labelledby="transportTitle">
+      <h2 id="transportTitle" class="sr-only" data-i18n="playStop"></h2>
+      <button id="playBtn" class="play" type="button" aria-pressed="false" data-i18n-title="playStop">
+        <svg class="ico-play" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5v15l13-7.5z"/></svg>
+        <svg class="ico-stop" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg>
+        <span class="play-label" data-i18n="play">Lecture</span>
+      </button>
+
+      <div class="field bpm-field">
+        <label for="bpm" data-i18n="bpm">Tempo (BPM)</label>
+        <div class="bpm-row">
+          <button class="btn mini" type="button" id="bpmDown" aria-label="BPM −1">−</button>
+          <input id="bpm" type="number" min="40" max="240" step="1" inputmode="numeric">
+          <button class="btn mini" type="button" id="bpmUp" aria-label="BPM +1">+</button>
+        </div>
+        <input id="bpmRange" type="range" min="40" max="240" step="1" data-i18n-aria="bpm">
+      </div>
+
+      <div class="field">
+        <label for="swing"><span data-i18n="swing">Swing</span> <output id="swingOut" for="swing"></output></label>
+        <input id="swing" type="range" min="0" max="100" step="1">
+      </div>
+
+      <div class="field">
+        <label for="master"><span data-i18n="master">Volume général</span> <output id="masterOut" for="master"></output></label>
+        <input id="master" type="range" min="0" max="1" step="0.01">
+      </div>
+
+      <div class="field">
+        <label for="length" data-i18n="length">Pas</label>
+        <select id="length">
+          <option value="12">12 (6/8)</option><option value="16">16</option>
+          <option value="24">24 (6/8)</option><option value="32">32</option>
+        </select>
+      </div>
+
+      <label class="check"><input id="chain" type="checkbox"> <span data-i18n="chain">Enchaîner A→D</span></label>
+
+      <div class="meter" role="img" data-i18n-aria="meter"><div id="meterBar"></div></div>
+    </section>
+
+    <!-- Pattern bank + edit tools -->
+    <section class="panel tools" aria-label="Motifs">
+      <div class="banks" role="radiogroup" data-i18n-aria="banks" id="banks"></div>
+      <div class="tool-buttons">
+        <button class="btn" type="button" id="copyBtn" data-i18n="copy">Copier</button>
+        <button class="btn" type="button" id="pasteBtn" data-i18n="paste">Coller</button>
+        <button class="btn" type="button" id="clearBtn" data-i18n="clear">Effacer</button>
+        <button class="btn" type="button" id="randomBtn" data-i18n="random">Aléatoire</button>
+        <button class="btn" type="button" id="undoBtn" data-i18n="undo">Annuler</button>
+      </div>
+      <div class="preset">
+        <label for="presetSel" data-i18n="preset">Préréglage</label>
+        <select id="presetSel"></select>
+        <button class="btn accent" type="button" id="presetBtn" data-i18n="loadPreset" data-i18n-title="presetHint">Charger</button>
+      </div>
+      <fieldset class="brush">
+        <legend data-i18n="brush">Vélocité du pinceau</legend>
+        <label><input type="radio" name="brush" value="1"> <span class="dot v1" aria-hidden="true"></span><span data-i18n="velSoft">Doux</span></label>
+        <label><input type="radio" name="brush" value="2" checked> <span class="dot v2" aria-hidden="true"></span><span data-i18n="velNormal">Normal</span></label>
+        <label><input type="radio" name="brush" value="3"> <span class="dot v3" aria-hidden="true"></span><span data-i18n="velAccent">Accent</span></label>
+      </fieldset>
+    </section>
+
+    <!-- Step grid (built by app.js) -->
+    <section class="panel grid-panel">
+      <div class="grid-scroll" id="gridScroll">
+        <div id="grid" class="grid" role="grid" data-i18n-aria="gridLabel" tabindex="-1"></div>
+      </div>
+      <p class="tips" data-i18n="tips"></p>
+    </section>
+
+    <div class="cols">
+      <!-- Selected-track editor -->
+      <section class="panel editor" aria-labelledby="editorTitle">
+        <h2 id="editorTitle"><span data-i18n="trackEditor">Réglages de la piste</span> — <span id="edName"></span></h2>
+        <div class="knobs">
+          <div class="field"><label for="edVol"><span data-i18n="vol">Volume</span> <output id="edVolOut" for="edVol"></output></label>
+            <input id="edVol" type="range" min="0" max="1" step="0.01"></div>
+          <div class="field"><label for="edPan"><span data-i18n="pan">Panoramique</span> <output id="edPanOut" for="edPan"></output></label>
+            <input id="edPan" type="range" min="-1" max="1" step="0.05"></div>
+          <div class="field"><label for="edTune"><span data-i18n="tune">Accord</span> <output id="edTuneOut" for="edTune"></output></label>
+            <input id="edTune" type="range" min="-12" max="12" step="1"></div>
+          <div class="field"><label for="edDecay"><span data-i18n="decay">Déclin</span> <output id="edDecayOut" for="edDecay"></output></label>
+            <input id="edDecay" type="range" min="0.2" max="3" step="0.05"></div>
+        </div>
+        <div class="ed-actions">
+          <button class="btn" type="button" id="edListen" data-i18n="audition">Écouter</button>
+          <button class="btn ghost" type="button" id="edReset" data-i18n="reset">Réinitialiser</button>
+        </div>
+      </section>
+
+      <!-- Exports -->
+      <section class="panel exports" aria-labelledby="exportTitle">
+        <h2 id="exportTitle" data-i18n="exportTitle">Export / import</h2>
+        <div class="field inline">
+          <label for="loops" data-i18n="loops">Boucles</label>
+          <select id="loops"><option>1</option><option>2</option><option selected>4</option><option>8</option><option>16</option></select>
+        </div>
+        <div class="export-buttons">
+          <button class="btn accent" type="button" id="wavBtn" data-i18n="exportWav">Exporter WAV</button>
+          <button class="btn accent" type="button" id="midiBtn" data-i18n="exportMidi">Exporter MIDI</button>
+          <button class="btn" type="button" id="jsonBtn" data-i18n="exportJson">Exporter JSON</button>
+          <label class="btn file"><span data-i18n="importJson">Importer JSON</span>
+            <input id="jsonFile" type="file" accept=".json,application/json" class="sr-only"></label>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="foot">
+    <p><span data-i18n="footer"></span> · <a href="https://github.com/salimadour31-boop/rythme-atelier" data-i18n="source">Code source</a></p>
+  </footer>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <dialog id="helpDlg" aria-labelledby="helpTitle">
+    <h2 id="helpTitle" data-i18n="shortcuts">Raccourcis clavier</h2>
+    <dl class="keys">
+      <dt><kbd>Espace</kbd></dt><dd data-i18n="kSpace"></dd>
+      <dt><kbd>A</kbd> <kbd>B</kbd> <kbd>C</kbd> <kbd>D</kbd></dt><dd data-i18n="kBank"></dd>
+      <dt><kbd>1</kbd> … <kbd>0</kbd></dt><dd data-i18n="kPads"></dd>
+      <dt><kbd>−</kbd> <kbd>+</kbd></dt><dd data-i18n="kBpm"></dd>
+      <dt><kbd>←</kbd> <kbd>↑</kbd> <kbd>→</kbd> <kbd>↓</kbd></dt><dd data-i18n="kArrows"></dd>
+      <dt><kbd>Entrée</kbd></dt><dd data-i18n="kEnter"></dd>
+      <dt><kbd>M</kbd> / <kbd>S</kbd></dt><dd data-i18n="kMute"></dd>
+      <dt><kbd>Ctrl</kbd>+<kbd>Z</kbd></dt><dd data-i18n="kUndo"></dd>
+      <dt><kbd>?</kbd></dt><dd data-i18n="kHelp"></dd>
+    </dl>
+    <form method="dialog"><button class="btn accent" data-i18n="close">Fermer</button></form>
+  </dialog>
+
+  <script src="js/core.js"></script>
+  <script src="js/synth.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
